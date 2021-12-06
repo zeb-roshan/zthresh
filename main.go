@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strconv"
 	"time"
 
 	"sync"
@@ -26,8 +26,11 @@ func handleStream(stream network.Stream) {
 	fmt.Println("Got a new stream!")
 	fmt.Println("Connect with ", stream.ID())
 	// Create a buffer stream for non blocking read and write.
-	//rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	a := rw
+	v := reflect.TypeOf(a)
 
+	fmt.Println("Connectd", v)
 	/*
 		go readData(rw, stream)
 		go writeData(rw, stream)
@@ -47,7 +50,7 @@ func main() {
 	} */
 	fmt.Println(rand.Intn(9999-1000) + 1000)
 
-	port := strconv.Itoa(rand.Intn(9999-1000) + 1000)
+	port := 37391 //strconv.Itoa(rand.Intn(9999-1000) + 1000)
 	//fmt.Println("Port: ", reflect.TypeOf(port))
 
 	//TCP connection
@@ -114,16 +117,16 @@ func main() {
 			continue
 		}
 
-		_, err := h.NewStream(cont(), peer.ID, protocol.ID("tss/1"))
-
+		stream, err := h.NewStream(cont(), peer.ID, protocol.ID("tss/1"))
+		fmt.Println("Found ", peer)
 		if err != nil {
-			//fmt.Println("Connection failed:", err)
+			fmt.Println("Connection failed:", err)
 			continue
 		} else {
 			fmt.Println("Found ", peer)
 			fmt.Println("Connecting to:", peer.Addrs[0].String()+"/p2p/"+peer.ID.String())
-			/* rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-			fmt.Println(rw) */
+			rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+			fmt.Println("Connected", reflect.TypeOf(rw))
 			peerlist = append(peerlist, peers{id: len(peerlist) + 1, addr: peer.Addrs[0].String() + "/p2p/" + peer.ID.String(), connect: false})
 			peerattempt = append(peerattempt, peer.ID.String())
 
