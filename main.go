@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"math/rand"
+	"net"
 	"reflect"
+	"strconv"
 	"time"
 
 	"sync"
@@ -23,14 +24,27 @@ import (
 //var fmt = log.fmt("rendezvous")
 
 func handleStream(stream network.Stream) {
-	fmt.Println("Got a new stream!")
-	fmt.Println("Connect with ", stream.ID())
-	// Create a buffer stream for non blocking read and write.
-	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	a := rw
-	v := reflect.TypeOf(a)
 
-	fmt.Println("Connectd", v)
+	//fmt.Println("Connect with ", stream.ID())
+	// Create a buffer stream for non blocking read and write.
+
+	fmt.Println("Recieved a Connection")
+	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	for {
+		str, err := rw.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading from buffer")
+			panic(err)
+		}
+		if str == "" {
+			return
+		}
+		if str != "\n" {
+			// Green console colour: 	\x1b[32m
+			// Reset console colour: 	\x1b[0m
+			fmt.Printf("Received information from %s ", str)
+		}
+	}
 	/*
 		go readData(rw, stream)
 		go writeData(rw, stream)
@@ -48,13 +62,25 @@ func main() {
 		fmt.Println("Threshold cannot be less than 2, Please re-enter")
 		fmt.Scanln(&input_peers)
 	} */
-	fmt.Println(rand.Intn(9999-1000) + 1000)
 
-	port := 37391 //strconv.Itoa(rand.Intn(9999-1000) + 1000)
+	port := strconv.Itoa(37391) //strconv.Itoa(rand.Intn(9999-1000) + 1000)
 	//fmt.Println("Port: ", reflect.TypeOf(port))
 
 	//TCP connection
 	priv, _, _ := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
+	for i := 37391; i <= 37400; i++ {
+		timeout := 1 * time.Second
+		_, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(i), timeout)
+
+		if err != nil {
+
+			port = strconv.Itoa(i)
+			break
+		} else {
+
+			continue
+		}
+	}
 	h, _ := libp2p.New(
 		//context.Background(),
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/"+string(port)),
@@ -120,17 +146,18 @@ func main() {
 		stream, err := h.NewStream(cont(), peer.ID, protocol.ID("tss/1"))
 		fmt.Println("Found ", peer)
 		if err != nil {
-			fmt.Println("Connection failed:", err)
+			fmt.Println("Connection failed")
 			continue
 		} else {
 			fmt.Println("Found ", peer)
 			fmt.Println("Connecting to:", peer.Addrs[0].String()+"/p2p/"+peer.ID.String())
-			rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+			/* rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 			fmt.Println("Connected", reflect.TypeOf(rw))
+			*/
 			peerlist = append(peerlist, peers{id: len(peerlist) + 1, addr: peer.Addrs[0].String() + "/p2p/" + peer.ID.String(), connect: false})
 			peerattempt = append(peerattempt, peer.ID.String())
 
-			go attemptconnection(len(peerlist) + 1)
+			go attemptconnection(len(peerlist)+1, stream)
 			/*
 				go writeData(rw, stream)
 				go readData(rw, stream) */
@@ -166,7 +193,7 @@ func handle_write() {
 	}
 }
 
-func attemptconnection(id int) {
+func attemptconnection(id int, stream network.Stream) {
 
 	fmt.Println("Attempting connection")
 
@@ -174,4 +201,19 @@ func attemptconnection(id int) {
 
 	//Connect and show proof - Add keccak auth?
 
+	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	//Add search for getting peer
+
+	fmt.Println("Connected to: ", peerlist[id])
+	sendData := "Peer: " //+ h.addr[0]
+	_, err := rw.WriteString(fmt.Sprintf("%s\n", sendData))
+	if err != nil {
+
+		panic(err)
+	}
+	err = rw.Flush()
+	if err != nil {
+		fmt.Println("Error flushing buffer")
+		panic(err)
+	}
 }
